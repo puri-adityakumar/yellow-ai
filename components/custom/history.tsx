@@ -19,6 +19,8 @@ import {
   PencilEditIcon,
   TrashIcon,
 } from "./icons";
+import { useProject } from "./project-context";
+import { ProjectSelector } from "./project-selector";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +49,7 @@ import {
 export const History = ({ user }: { user: User | undefined }) => {
   const { id } = useParams();
   const pathname = usePathname();
+  const { selectedProject, setSelectedProject } = useProject();
 
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const {
@@ -123,7 +126,20 @@ export const History = ({ user }: { user: User | undefined }) => {
             </div>
           </div>
 
-          <div className="mt-10 flex flex-col">
+          {/* Project Selector */}
+          {user && (
+            <div className="mt-6 mb-4">
+              <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">
+                PROJECT
+              </div>
+              <ProjectSelector
+                selectedProject={selectedProject}
+                onProjectChange={setSelectedProject}
+              />
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col">
             {user && (
               <Button
                 className="font-normal text-sm flex flex-row justify-between text-white"
@@ -136,7 +152,7 @@ export const History = ({ user }: { user: User | undefined }) => {
               </Button>
             )}
 
-            <div className="flex flex-col overflow-y-scroll p-1 h-[calc(100dvh-124px)]">
+            <div className="flex flex-col overflow-y-scroll p-1 h-[calc(100dvh-180px)]">
               {!user ? (
                 <div className="text-zinc-500 h-dvh w-full flex flex-row justify-center items-center text-sm gap-2">
                   <InfoIcon />

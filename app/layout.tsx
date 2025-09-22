@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { Toaster } from "sonner";
 
 import { Navbar } from "@/components/custom/navbar";
+import { ProjectProvider } from "@/components/custom/project-context";
 import { ThemeProvider } from "@/components/custom/theme-provider";
 
 import "./globals.css";
@@ -26,9 +27,11 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Toaster position="top-center" />
-          <Navbar />
-          {children}
+          <ProjectProvider>
+            <Toaster position="top-center" />
+            <Navbar />
+            {children}
+          </ProjectProvider>
         </ThemeProvider>
       </body>
     </html>
