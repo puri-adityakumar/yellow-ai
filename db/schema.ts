@@ -41,3 +41,41 @@ export const reservation = pgTable("Reservation", {
 });
 
 export type Reservation = InferSelectModel<typeof reservation>;
+
+export const project = pgTable("Project", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: varchar("description", { length: 500 }),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  settings: json("settings").$type<{
+    defaultModel: string;
+    systemPrompt?: string;
+    safetyLevel: 'strict' | 'moderate' | 'permissive';
+  }>().notNull().default({
+    defaultModel: 'gemini-2.5-flash',
+    safetyLevel: 'moderate'
+  }),
+});
+
+export type Project = InferSelectModel<typeof project>;
+
+export const projectFile = pgTable("ProjectFile", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  projectId: uuid("projectId")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  url: varchar("url", { length: 500 }).notNull(),
+  contentType: varchar("contentType", { length: 100 }).notNull(),
+  size: varchar("size", { length: 20 }).notNull(),
+  uploadedAt: timestamp("uploadedAt").notNull().defaultNow(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+});
+
+export type ProjectFile = InferSelectModel<typeof projectFile>;

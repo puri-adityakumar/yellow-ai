@@ -7,7 +7,9 @@ import { useState } from "react";
 import { Message as PreviewMessage } from "@/components/custom/message";
 import { useScrollToBottom } from "@/components/custom/use-scroll-to-bottom";
 
+import { ModelSelector } from "./model-selector";
 import { MultimodalInput } from "./multimodal-input";
+import { ProjectSelector } from "./project-selector";
 
 export function Chat({
   id,
@@ -16,10 +18,18 @@ export function Chat({
   id: string;
   initialMessages: Array<Message>;
 }) {
+  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
+  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+
   const { messages, handleSubmit, input, setInput, append, isLoading, stop } =
     useChat({
       id,
-      body: { id },
+      body: { 
+        id,
+        model: selectedModel,
+        projectId: selectedProject,
+      },
       initialMessages,
       maxSteps: 10,
       onFinish: () => {
@@ -30,11 +40,26 @@ export function Chat({
   const [messagesContainerRef, messagesEndRef] =
     useScrollToBottom<HTMLDivElement>();
 
-  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
-
   return (
     <div className="flex flex-row justify-center pb-4 md:pb-8 h-dvh bg-background">
       <div className="flex flex-col justify-between items-center gap-4">
+        <div className="w-full max-w-3xl mx-auto p-4 space-y-4">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <ProjectSelector
+                selectedProject={selectedProject}
+                onProjectChange={setSelectedProject}
+              />
+            </div>
+            <div className="flex-1">
+              <ModelSelector
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+              />
+            </div>
+          </div>
+        </div>
+        
         <div
           ref={messagesContainerRef}
           className="flex flex-col gap-4 h-full w-dvw items-center overflow-y-scroll"

@@ -129,10 +129,34 @@ export function MultimodalInput({
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
 
-      setUploadQueue(files.map((file) => file.name));
+      // Validate file types and sizes
+      const validFiles = files.filter(file => {
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const allowedTypes = [
+          'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+          'application/pdf', 'text/plain', 'text/csv', 'application/json',
+          'video/mp4', 'video/mpeg', 'audio/mp3', 'audio/wav'
+        ];
+        
+        if (file.size > maxSize) {
+          toast.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+          return false;
+        }
+        
+        if (!allowedTypes.includes(file.type)) {
+          toast.error(`File type ${file.type} is not supported.`);
+          return false;
+        }
+        
+        return true;
+      });
+
+      if (validFiles.length === 0) return;
+
+      setUploadQueue(validFiles.map((file) => file.name));
 
       try {
-        const uploadPromises = files.map((file) => uploadFile(file));
+        const uploadPromises = validFiles.map((file) => uploadFile(file));
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
           (attachment) => attachment !== undefined,
@@ -142,8 +166,13 @@ export function MultimodalInput({
           ...currentAttachments,
           ...successfullyUploadedAttachments,
         ]);
+
+        if (successfullyUploadedAttachments.length > 0) {
+          toast.success(`${successfullyUploadedAttachments.length} file(s) uploaded successfully!`);
+        }
       } catch (error) {
         console.error("Error uploading files!", error);
+        toast.error("Failed to upload files. Please try again.");
       } finally {
         setUploadQueue([]);
       }
@@ -191,6 +220,7 @@ export function MultimodalInput({
         ref={fileInputRef}
         multiple
         onChange={handleFileChange}
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.csv,.json"
         tabIndex={-1}
       />
 
