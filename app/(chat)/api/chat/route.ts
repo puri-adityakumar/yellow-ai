@@ -19,8 +19,15 @@ import {
 import { generateUUID } from "@/lib/utils";
 
 export async function POST(request: Request) {
-  const { id, messages }: { id: string; messages: Array<Message> } =
-    await request.json();
+  const { 
+    id, 
+    messages, 
+    projectId 
+  }: { 
+    id: string; 
+    messages: Array<Message>; 
+    projectId?: string | null;
+  } = await request.json();
 
   const session = await auth();
 
@@ -34,25 +41,15 @@ export async function POST(request: Request) {
 
   const result = await streamText({
     model: geminiProModel,
-    system: `\n
-        - you help users book flights!
-        - keep your responses limited to a sentence.
-        - DO NOT output lists.
-        - after every tool call, pretend you're showing the result to the user and keep your response limited to a phrase.
-        - today's date is ${new Date().toLocaleDateString()}.
-        - ask follow up questions to nudge user into the optimal flow
-        - ask for any details you don't know, like name of passenger, etc.'
-        - C and D are aisle seats, A and F are window seats, B and E are middle seats
-        - assume the most popular airports for the origin and destination
-        - here's the optimal flow
-          - search for flights
-          - choose flight
-          - select seats
-          - create reservation (ask user whether to proceed with payment or change reservation)
-          - authorize payment (requires user consent, wait for user to finish payment and let you know when done)
-          - display boarding pass (DO NOT display boarding pass without verifying payment)
-        '
-      `,
+    system: `You are a helpful AI assistant. You can help with various tasks including:
+        - Answering questions on any topic
+        - Writing and editing content
+        - Code assistance and programming help
+        - Analysis and research
+        - Creative tasks like writing songs, stories, or poems
+        - General conversation and advice
+        
+        Keep your responses helpful, accurate, and engaging. Adapt your tone and style to match the user's needs.`,
     messages: coreMessages,
     tools: {
       getWeather: {
@@ -221,6 +218,7 @@ export async function POST(request: Request) {
             id,
             messages: [...coreMessages, ...responseMessages],
             userId: session.user.id,
+            projectId,
           });
         } catch (error) {
           console.error("Failed to save chat");
@@ -234,6 +232,42 @@ export async function POST(request: Request) {
   });
 
   return result.toDataStreamResponse({});
+}
+
+export async function PATCH(request: Request) {
+  const { chatId, projectId }: { chatId: string; projectId: string | null } = await request.json();
+
+  if (!chatId) {
+    return new Response("Chat ID is required", { status: 400 });
+  }
+
+  const session = await auth();
+
+  if (!session || !session.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  try {
+    const chat = await getChatById({ id: chatId });
+
+    if (chat.userId !== session.user.id) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    // Update the chat's project assignment
+    await saveChat({
+      id: chatId,
+      messages: chat.messages,
+      userId: session.user.id,
+      projectId,
+    });
+
+    return new Response("Chat project updated", { status: 200 });
+  } catch (error) {
+    return new Response("An error occurred while processing your request", {
+      status: 500,
+    });
+  }
 }
 
 export async function DELETE(request: Request) {

@@ -24,6 +24,8 @@ export const chat = pgTable("Chat", {
   userId: uuid("userId")
     .notNull()
     .references(() => user.id),
+  projectId: uuid("projectId")
+    .references(() => project.id, { onDelete: "set null" }),
 });
 
 export type Chat = Omit<InferSelectModel<typeof chat>, "messages"> & {

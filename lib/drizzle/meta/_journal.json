@@ -15,6 +15,13 @@
       "when": 1758562190009,
       "tag": "0001_dusty_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1758564044734,
+      "tag": "0002_productive_darkstar",
+      "breakpoints": true
     }
   ]
 }

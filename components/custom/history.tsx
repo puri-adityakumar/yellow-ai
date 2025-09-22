@@ -37,6 +37,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import {
   Sheet,
@@ -56,16 +57,63 @@ export const History = ({ user }: { user: User | undefined }) => {
     data: history,
     isLoading,
     mutate,
-  } = useSWR<Array<Chat>>(user ? "/api/history" : null, fetcher, {
-    fallbackData: [],
-  });
+  } = useSWR<Array<Chat>>(
+    user ? `/api/history${selectedProject && selectedProject !== "VIEW_ALL" ? `?projectId=${selectedProject === "" ? "null" : selectedProject}` : ""}` : null, 
+    fetcher, 
+    {
+      fallbackData: [],
+    }
+  );
 
   useEffect(() => {
     mutate();
-  }, [pathname, mutate]);
+  }, [pathname, selectedProject, mutate]);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; description?: string }>>([]);
+  const [showProjectAssignDialog, setShowProjectAssignDialog] = useState(false);
+  const [assigningChatId, setAssigningChatId] = useState<string | null>(null);
+
+  // Fetch projects for assignment dropdown
+  useEffect(() => {
+    if (user) {
+      fetch('/api/projects')
+        .then(res => res.json())
+        .then(data => {
+          if (data.projects) {
+            setProjects(data.projects);
+          }
+        })
+        .catch(error => console.error('Failed to fetch projects:', error));
+    }
+  }, [user]);
+
+  const handleAssignToProject = async (chatId: string, projectId: string | null) => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId,
+          projectId,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Chat moved to project successfully');
+        mutate(); // Refresh the chat list
+        setShowProjectAssignDialog(false);
+      } else {
+        toast.error('Failed to move chat to project');
+      }
+    } catch (error) {
+      console.error('Error assigning chat to project:', error);
+      toast.error('Failed to move chat to project');
+    }
+  };
 
   const handleDelete = async () => {
     const deletePromise = fetch(`/api/chat?id=${deleteId}`, {
@@ -179,7 +227,90 @@ export const History = ({ user }: { user: User | undefined }) => {
                 </div>
               ) : null}
 
-              {history &&
+              {history && selectedProject === "VIEW_ALL" && (() => {
+                // Group chats by project when "View All" is selected
+                const groupedChats = history.reduce((groups: Record<string, Chat[]>, chat) => {
+                  const key = chat.projectId || 'No Project';
+                  if (!groups[key]) groups[key] = [];
+                  groups[key].push(chat);
+                  return groups;
+                }, {});
+
+                return Object.entries(groupedChats).map(([projectName, chats]) => (
+                  <div key={projectName} className="mb-4">
+                    <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2 px-2">
+                      {projectName === 'No Project' ? 'NO PROJECT' : 
+                        projects.find(p => p.id === projectName)?.name?.toUpperCase() || projectName.toUpperCase()}
+                    </div>
+                    {chats.map((chat) => (
+                      <div
+                        key={chat.id}
+                        className={cx(
+                          "flex flex-row items-center gap-6 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md pr-2",
+                          { "bg-zinc-200 dark:bg-zinc-700": chat.id === id },
+                        )}
+                      >
+                        <Button
+                          variant="ghost"
+                          className={cx(
+                            "hover:bg-zinc-200 dark:hover:bg-zinc-700 justify-between p-0 text-sm font-normal flex flex-row items-center gap-2 pr-2 w-full transition-none",
+                          )}
+                          asChild
+                        >
+                          <Link
+                            href={`/chat/${chat.id}`}
+                            className="text-ellipsis overflow-hidden text-left py-2 pl-2 rounded-lg outline-zinc-900"
+                          >
+                            {getTitleFromChat(chat)}
+                          </Link>
+                        </Button>
+
+                        <DropdownMenu modal={true}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              className="p-0 h-fit font-normal text-zinc-500 transition-none hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                              variant="ghost"
+                            >
+                              <MoreHorizontalIcon />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="left" className="z-[60]">
+                            <DropdownMenuItem asChild>
+                              <Button
+                                className="flex flex-row gap-2 items-center justify-start w-full h-fit font-normal p-1.5 rounded-sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setAssigningChatId(chat.id);
+                                  setShowProjectAssignDialog(true);
+                                }}
+                              >
+                                <PencilEditIcon />
+                                <div>Add to Project</div>
+                              </Button>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                              <Button
+                                className="flex flex-row gap-2 items-center justify-start w-full h-fit font-normal p-1.5 rounded-sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setDeleteId(chat.id);
+                                  setShowDeleteDialog(true);
+                                }}
+                              >
+                                <TrashIcon />
+                                <div>Delete</div>
+                              </Button>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </div>
+                ));
+              })()}
+
+              {history && selectedProject !== "VIEW_ALL" && 
                 history.map((chat) => (
                   <div
                     key={chat.id}
@@ -218,6 +349,20 @@ export const History = ({ user }: { user: User | undefined }) => {
                             className="flex flex-row gap-2 items-center justify-start w-full h-fit font-normal p-1.5 rounded-sm"
                             variant="ghost"
                             onClick={() => {
+                              setAssigningChatId(chat.id);
+                              setShowProjectAssignDialog(true);
+                            }}
+                          >
+                            <PencilEditIcon />
+                            <div>Add to Project</div>
+                          </Button>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Button
+                            className="flex flex-row gap-2 items-center justify-start w-full h-fit font-normal p-1.5 rounded-sm"
+                            variant="ghost"
+                            onClick={() => {
                               setDeleteId(chat.id);
                               setShowDeleteDialog(true);
                             }}
@@ -249,6 +394,56 @@ export const History = ({ user }: { user: User | undefined }) => {
             <AlertDialogAction onClick={handleDelete}>
               Continue
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showProjectAssignDialog} onOpenChange={setShowProjectAssignDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add Chat to Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select a project to assign this chat to, or choose &ldquo;No Project&rdquo; to remove it from any project.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => {
+                  if (assigningChatId) {
+                    handleAssignToProject(assigningChatId, null);
+                  }
+                }}
+              >
+                No Project
+              </Button>
+              {projects.map((project) => (
+                <Button
+                  key={project.id}
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    if (assigningChatId) {
+                      handleAssignToProject(assigningChatId, project.id);
+                    }
+                  }}
+                >
+                  {project.name}
+                  {project.description && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {project.description}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowProjectAssignDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

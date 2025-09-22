@@ -1,7 +1,7 @@
 import "server-only";
 
 import { genSaltSync, hashSync } from "bcrypt-ts";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNull, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -38,10 +38,12 @@ export async function saveChat({
   id,
   messages,
   userId,
+  projectId,
 }: {
   id: string;
   messages: any;
   userId: string;
+  projectId?: string | null;
 }) {
   try {
     const selectedChats = await db.select().from(chat).where(eq(chat.id, id));
@@ -51,6 +53,7 @@ export async function saveChat({
         .update(chat)
         .set({
           messages: JSON.stringify(messages),
+          projectId,
         })
         .where(eq(chat.id, id));
     }
@@ -60,6 +63,7 @@ export async function saveChat({
       createdAt: new Date(),
       messages: JSON.stringify(messages),
       userId,
+      projectId,
     });
   } catch (error) {
     console.error("Failed to save chat in database");
@@ -85,6 +89,35 @@ export async function getChatsByUserId({ id }: { id: string }) {
       .orderBy(desc(chat.createdAt));
   } catch (error) {
     console.error("Failed to get chats by user from database");
+    throw error;
+  }
+}
+
+export async function getChatsByUserIdAndProject({ 
+  userId, 
+  projectId 
+}: { 
+  userId: string; 
+  projectId?: string | null;
+}) {
+  try {
+    if (projectId === null || projectId === undefined) {
+      // Get chats with no project
+      return await db
+        .select()
+        .from(chat)
+        .where(and(eq(chat.userId, userId), isNull(chat.projectId)))
+        .orderBy(desc(chat.createdAt));
+    } else {
+      // Get chats for specific project
+      return await db
+        .select()
+        .from(chat)
+        .where(and(eq(chat.userId, userId), eq(chat.projectId, projectId)))
+        .orderBy(desc(chat.createdAt));
+    }
+  } catch (error) {
+    console.error("Failed to get chats by user and project from database");
     throw error;
   }
 }

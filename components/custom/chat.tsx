@@ -28,7 +28,7 @@ export function Chat({
       body: { 
         id,
         model: selectedModel,
-        projectId: selectedProject,
+        projectId: null, // New chats default to no project
       },
       initialMessages,
       maxSteps: 10,

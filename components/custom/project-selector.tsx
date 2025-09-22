@@ -113,6 +113,11 @@ export function ProjectSelector({ selectedProject, onProjectChange, className }:
   };
 
   const currentProject = projects.find(p => p.id === selectedProject);
+  const getDisplayName = () => {
+    if (selectedProject === "VIEW_ALL") return "View All";
+    if (selectedProject === "") return "No Project";
+    return currentProject?.name || "Select Project";
+  };
 
   return (
     <div className={className}>
@@ -122,12 +127,44 @@ export function ProjectSelector({ selectedProject, onProjectChange, className }:
             <div className="flex items-center gap-2">
               <Folder className="size-4" />
               <span className="truncate">
-                {loading ? "Loading..." : (currentProject?.name || "Select Project")}
+                {loading ? "Loading..." : getDisplayName()}
               </span>
             </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuItem
+            onClick={() => onProjectChange("VIEW_ALL")}
+            className="flex items-center justify-between p-3"
+          >
+            <div className="flex flex-col items-start">
+              <span className="font-medium">View All</span>
+              <span className="text-xs text-muted-foreground">
+                Show all chats regardless of project
+              </span>
+            </div>
+            {selectedProject === "VIEW_ALL" && (
+              <span className="text-xs text-blue-600 font-medium">Selected</span>
+            )}
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem
+            onClick={() => onProjectChange("")}
+            className="flex items-center justify-between p-3"
+          >
+            <div className="flex flex-col items-start">
+              <span className="font-medium">No Project</span>
+              <span className="text-xs text-muted-foreground">
+                Show chats with no project assigned
+              </span>
+            </div>
+            {selectedProject === "" && (
+              <span className="text-xs text-blue-600 font-medium">Selected</span>
+            )}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
           {projects.map((project) => (
             <DropdownMenuItem
               key={project.id}
