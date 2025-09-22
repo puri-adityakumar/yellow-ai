@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { auth, signOut } from "@/app/(auth)/auth";
@@ -23,17 +22,14 @@ export const Navbar = async () => {
         <div className="flex flex-row gap-3 items-center">
           <History user={session?.user} />
           <div className="flex flex-row gap-2 items-center">
-            <Image
-              src="/images/gemini-logo.png"
-              height={20}
-              width={20}
-              alt="gemini logo"
-            />
+            <div className="size-5 bg-yellow-500 rounded-sm flex items-center justify-center text-white text-xs font-bold">
+              Y
+            </div>
             <div className="text-zinc-500">
               <SlashIcon size={16} />
             </div>
             <div className="text-sm dark:text-zinc-300 truncate w-28 md:w-fit">
-              Next.js Gemini Chatbot
+              Yellow AI Chat
             </div>
           </div>
         </div>
